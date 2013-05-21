@@ -1,0 +1,64 @@
+#!/bin/sh
+
+tmp=".$2~"
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+	echo "bsapk <unpacked dir> <apk-signed file> <keystore> <alias>"
+	echo "bsapk --debug <unpacked dir> <apk-signed file>"
+	echo "bsapk --newkey <unpacked dir> <apk-signed file> <keystore> <alias>"
+elif [ "$1" = "--debug" ]; then
+	if [ -n "$2" ] && [ -n "$3" ]; then
+		apktool b "$2" "$tmp"
+		jarsigner -verbose -keystore ~/.android/debug.keystore -storepass android -signedjar $3 $tmp androiddebugkey
+		rm "$tmp"
+	else
+		echo "bsapk <unpacked dir> <apk-signed file> <keystore> <alias>"
+		echo "bsapk --debug <unpacked dir> <apk-signed file>"
+		echo "bsapk --newkey <unpacked dir> <apk-signed file> <keystore> <alias>"
+	fi
+elif [ "$1" = "--newkey" ]; then
+	if [ -n "$2" ] && [ -n "$3" ] && [ -n "$4" ] && [ -n "$5" ]; then
+
+		if [ -f "$4" ]; then
+			rm $4
+		fi
+
+		echo "Store Password:\c":
+		stty -echo
+		read storepass
+		stty echo
+
+		echo ""
+
+		echo "Alias Password:\c"
+		stty -echo
+		read keypass
+		stty echo
+
+		keytool -genkey -alias $5 -keyalg RSA -validity 36500 -keystore $4 -keypass ${keypass} -storepass ${storepass}
+		apktool b "$2" "$tmp"
+		jarsigner -verbose -keystore $4 -keypass ${keypass} -storepass ${storepass} -signedjar $3 $tmp $5
+		rm "$tmp"
+	else
+		echo "bsapk <unpacked dir> <apk-signed file> <keystore> <alias>"
+		echo "bsapk --debug <unpacked dir> <apk-signed file>"
+		echo "bsapk --newkey <unpacked dir> <apk-signed file> <keystore> <alias>"
+	fi
+elif [ -n "$1" ] && [ -n "$2" ] && [ -n "$3" ] && [ -n "$4" ]; then
+	if [ -d "$1" ]; then
+		if [ -f "$3" ]; then
+			apktool b "$1" "$tmp"
+			jarsigner -verbose -keystore $3 -signedjar $2 $tmp $4
+			rm "$tmp"
+		else
+			echo "Sign key does not exist."
+		fi
+	else
+		echo "Source dir does not exist."
+	fi
+else
+	echo "bsapk <unpacked dir> <apk-signed file> <keystore> <alias>"
+	echo "bsapk --debug <unpacked dir> <apk-signed file>"
+	echo "bsapk --newkey <unpacked dir> <apk-signed file> <keystore> <alias>"
+fi
+
